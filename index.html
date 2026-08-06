@@ -13,6 +13,8 @@
         <link rel="stylesheet" href="css/fontawesome-all.min.css">
         <link rel="stylesheet" href="css/MarkerCluster.css">
         <link rel="stylesheet" href="css/MarkerCluster.Default.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
         <link rel="stylesheet" href="css/leaflet.photon.css">
         <style>
         html, body, #map {
@@ -40,6 +42,9 @@
         <script src="js/labels.js"></script>
         <script src="js/leaflet.photon.js"></script>
         <script src="js/leaflet.markercluster.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
         <script src="data/Sitesdecompostage_1.js"></script>
         <script>
         var highlightLayer;
@@ -165,22 +170,16 @@
             });
             var popupContent = '<table>\
                     <tr>\
-                        <td colspan="2">' + (feature.properties['Code postal'] !== null ? autolinker.link(String(feature.properties['Code postal']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                        <th scope="row">Code postal</th>\
+                        <td>' + (feature.properties['Code postal'] !== null ? autolinker.link(String(feature.properties['Code postal']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
                     <tr>\
-                        <td colspan="2">' + (feature.properties['Commune'] !== null ? autolinker.link(String(feature.properties['Commune']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                        <th scope="row">Commune</th>\
+                        <td>' + (feature.properties['Commune'] !== null ? autolinker.link(String(feature.properties['Commune']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
                     <tr>\
-                        <td colspan="2">' + (feature.properties['X'] !== null ? autolinker.link(String(feature.properties['X']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
-                    </tr>\
-                    <tr>\
-                        <td colspan="2">' + (feature.properties['Y'] !== null ? autolinker.link(String(feature.properties['Y']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
-                    </tr>\
-                    <tr>\
-                        <td colspan="2">' + (feature.properties['Accès'] !== null ? autolinker.link(String(feature.properties['Accès']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
-                    </tr>\
-                    <tr>\
-                        <td colspan="2">' + (feature.properties['Adresse'] !== null ? autolinker.link(String(feature.properties['Adresse']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                        <th scope="row">Adresse</th>\
+                        <td>' + (feature.properties['Adresse'] !== null ? autolinker.link(String(feature.properties['Adresse']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
                 </table>';
             var content = removeEmptyRowsFromPopupContent(popupContent, feature);
@@ -191,7 +190,7 @@
         }
 
         function style_Sitesdecompostage_1_0(feature) {
-            switch(String(feature.properties['Accès'])) {
+            switch(String(feature.properties['q2wHide_Accès'])) {
                 case '1':
                     return {
                 pane: 'pane_Sitesdecompostage_1',
@@ -317,6 +316,219 @@
         });
         lay.addTo(map);
         setBounds();
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"Accès": "int","Y": "real","X": "real"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Accs = document.createElement("div");
+            div_Accs.id = "div_Accs";
+            div_Accs.className = "slider";
+            document.getElementById("menu").appendChild(div_Accs);
+            var lab_Accs = document.createElement('div');
+            lab_Accs.innerHTML  = 'Accès: <span id="val_Accs"></span>';
+            lab_Accs.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_Accs);
+            var reset_Accs = document.createElement('div');
+            reset_Accs.innerHTML = 'clear filter';
+            reset_Accs.className = 'filterlabel';
+            lab_Accs.className = 'filterlabel';
+            reset_Accs.onclick = function() {
+                sel_Accs.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_Accs);
+            var sel_Accs = document.getElementById('div_Accs');
+            noUiSlider.create(sel_Accs, {
+                connect: true,
+                start: [1, 2],
+                step: 1,
+                format: wNumb({
+                    decimals: 0,
+                    }),
+                range: {
+                min: 1,
+                max: 2
+                }
+            });
+            sel_Accs.noUiSlider.on('update', function (values) {
+            filterVals =[];
+            for (value in values){
+            filterVals.push(parseInt(value))
+            }
+            val_Accs = document.getElementById('val_Accs');
+            val_Accs.innerHTML = values.join(' - ');
+                filterFunc()
+            });
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Y = document.createElement("div");
+            div_Y.id = "div_Y";
+            div_Y.className = "slider";
+            document.getElementById("menu").appendChild(div_Y);
+            var lab_Y = document.createElement('div');
+            lab_Y.innerHTML  = 'Y: <span id="val_Y"></span>';
+            lab_Y.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_Y);
+            var reset_Y = document.createElement('div');
+            reset_Y.innerHTML = 'clear filter';
+            reset_Y.className = 'filterlabel';
+            lab_Y.className = 'filterlabel';
+            reset_Y.onclick = function() {
+                sel_Y.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_Y);
+            var sel_Y = document.getElementById('div_Y');
+            noUiSlider.create(sel_Y, {
+                connect: true,
+                start: [6926934.48, 6938175.43],
+                range: {
+                min: 6926934.48,
+                max: 6938175.43
+                }
+            });
+            sel_Y.noUiSlider.on('update', function (values) {
+            val_Y = document.getElementById('val_Y');
+            val_Y.innerHTML = values.join(' - ');
+                filterFunc()
+            });
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_X = document.createElement("div");
+            div_X.id = "div_X";
+            div_X.className = "slider";
+            document.getElementById("menu").appendChild(div_X);
+            var lab_X = document.createElement('div');
+            lab_X.innerHTML  = 'X: <span id="val_X"></span>';
+            lab_X.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_X);
+            var reset_X = document.createElement('div');
+            reset_X.innerHTML = 'clear filter';
+            reset_X.className = 'filterlabel';
+            lab_X.className = 'filterlabel';
+            reset_X.onclick = function() {
+                sel_X.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_X);
+            var sel_X = document.getElementById('div_X');
+            noUiSlider.create(sel_X, {
+                connect: true,
+                start: [92342.03, 937626.38],
+                range: {
+                min: 92342.03,
+                max: 937626.38
+                }
+            });
+            sel_X.noUiSlider.on('update', function (values) {
+            val_X = document.getElementById('val_X');
+            val_X.innerHTML = values.join(' - ');
+                filterFunc()
+            });
         </script>        
     </body>
 </html>
